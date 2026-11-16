@@ -32,7 +32,7 @@ export const profile = {
   status: "Open to internships & research collaborations.",
   resume: "/assets/resume.pdf",
   avatar: "/assets/avatar.jpg",
-  siteUrl: "https://soykarak.vercel.app",
+  siteUrl: "https://thekarak.github.io",
 };
 
 export const projects: Project[] = [

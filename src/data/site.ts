@@ -48,7 +48,7 @@ export const site: SiteData = {
   x: "https://x.com/imskarak",
   resume: "/assets/resume.pdf",
   avatar: "/assets/avatar.jpg",
-  siteUrl: "https://soykarak.vercel.app",
+  siteUrl: "https://thekarak.github.io",
   tagline: "Build it. Question it. Make it worth trusting.",
   status: "open to internships and research collaborations.",
   lede: [

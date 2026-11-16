@@ -1,21 +1,7 @@
 import type { Metadata } from "next";
-import { Newsreader, JetBrains_Mono } from "next/font/google";
 import { site } from "@/data/site";
 import { BootScreen } from "@/components/boot-screen";
 import "./globals.css";
-
-const serif = Newsreader({
-  subsets: ["latin"],
-  variable: "--font-serif",
-  display: "swap",
-});
-
-const mono = JetBrains_Mono({
-  weight: "400",
-  subsets: ["latin"],
-  variable: "--font-mono",
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || site.siteUrl),
@@ -30,14 +16,6 @@ export const metadata: Metadata = {
     description: site.tagline,
     url: "/",
     siteName: site.name,
-    images: [
-      {
-        url: "/opengraph-image",
-        width: 1200,
-        height: 630,
-        alt: "Sourasis Karak — Build it. Question it. Make it worth trusting.",
-      },
-    ],
   },
   twitter: { card: "summary_large_image" },
   robots: { index: true, follow: true },
@@ -57,7 +35,7 @@ export default function RootLayout({
           <style>{`.copy-email,.icon-button,.clock{display:none!important}`}</style>
         </noscript>
       </head>
-      <body className={`${serif.variable} ${mono.variable}`}>
+      <body>
         <BootScreen />
         {children}
       </body>

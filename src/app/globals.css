@@ -11,9 +11,8 @@
                    the text and fades to nothing at the edges (never an opaque box)
    .note / header / footer / dock   the content itself, above the wash
 
-   Font tokens (--font-serif, --font-mono) are supplied by the layout via
-   next/font CSS variables. We reference them with graceful fallbacks so the
-   typography still reads as serif/mono before those variables arrive.
+   Font tokens use local system stacks so static builds do not depend on a
+   network fetch at build time.
    ========================================================================== */
 
 :root {

@@ -1,36 +1,52 @@
-# Sourasis Karak — personal website
+# Sourasis Karak · personal site
 
-A responsive technical editorial portfolio with a personal masthead, a featured BioAgent-ST workflow schematic, a six-project index, and project-backed working principles. Built with HTML, CSS, and JavaScript. No package installation or build step is required.
+A small, deliberately quiet personal site: one centered reading column, honest notes about machine learning work, and a full-viewport ASCII neural network that leans toward the cursor. Built with the Next.js App Router, TypeScript, Tailwind CSS 4, and Canvas 2D. No animation library, WebGL, or images.
 
-## Preview
+## Run locally
 
-Run `python -m http.server 8000` from this directory and open http://localhost:8000. The existing `start.bat` also starts the preview.
+Requires Node.js 20.9+.
 
-## Features
+```sh
+npm ci
+npm run dev
+```
 
-- Warm white and charcoal themes, with system preference detection and a saved manual toggle.
-- Subtle portrait tilt, a pointer-responsive 3D orbital study with inertial rotation, section reveals, and reading progress. Project-specific SVG symbols animate on hover; the closing arrow responds to pointer direction. Motion respects reduced-motion settings; the canvas pauses offscreen and in hidden tabs.
-- A live Asia/Kolkata clock in the desktop header and mobile footer.
-- Six filterable projects with expandable implementation notes, source links, and available live demos.
-- Keyboard navigation, visible focus, email copying with failure feedback, and print styles.
+Open http://localhost:3000. To preview production, run `npm run build` then `npm run start`.
 
-## Content
+## Pages
 
-The six selected projects and their order match https://soykarak.vercel.app, checked on 5 November 2026. Descriptions also reference their public repositories:
+- `/` — hero with icon links (GitHub, Gmail, X, résumé), `now`, `things i believe`, `things i like`, `selected work`, and `skills`.
+- `/blog` — a minimal "coming soon" page linked from the header and the hero.
 
-- https://github.com/thekarak/Bioagent-ST
-- https://github.com/thekarak/Reducing-LLM-Hallucinations
-- https://github.com/thekarak/VARUNA
-- https://github.com/thekarak/Tokenlab
-- https://github.com/thekarak/Winelens
-- https://github.com/thekarak/RoastMeBuddy
+## What is where
 
-Project limitations are retained in the expandable details. The field notes link to existing repository documentation; they do not claim to be independently published articles. Content is curated, not fetched from GitHub at runtime.
+- `src/data/site.ts`: typed profile copy, beliefs, likes, work, skills, and the things he cares about. Facts come from the older `src/data/projects.ts` and `github.com/thekarak`.
+- `src/app/page.tsx`, `src/app/layout.tsx`: server-rendered page, metadata, Person JSON-LD, self-hosted Newsreader + JetBrains Mono fonts, inline theme script (`sk-theme`), and the boot overlay.
+- `src/app/globals.css`: light/dark tokens, the column-sized paper wash, skills grid, boot glitch, responsive/print rules.
+- `src/components/ascii-scenes.ts`: glyph framebuffer and the nine-layer deep network scene, including cursor-driven lean, receptive field, and pulse bending.
+- `src/components/ascii-background.tsx`: canvas lifecycle, 12fps loop, theme palette, passive pointer listeners, reduced-motion handling.
+- `src/components/hero-links.tsx`, `skills.tsx`, `site-header.tsx`, `theme-toggle.tsx`, `boot-screen.tsx`: the small interactive pieces.
+- `src/data/skill-icons.ts`: official Simple Icons (CC0) path data embedded at build time, so no runtime icon requests.
 
-Edit `index.html` to update the biography, projects, and links. Replace `assets/resume.pdf` when the résumé changes. Google Fonts have local system fallbacks; interactions require no external services.
+## The background
 
-## Hosting
+One continuous animation, no controls. A nine-layer multilayer perceptron (`4 → 6 → 8 → 10 → 10 → 10 → 8 → 6 → 3`) with dense weighted connections, a layer-by-layer activation wave, three-signal forward batches, a loss trace, and error signals flowing back on an eleven-second loop. The mesh leans toward the cursor; glyphs near the pointer brighten, then melt back when it leaves.
 
-Existing portfolio: https://soykarak.vercel.app
+Everything is drawn with real monospace glyphs into a character framebuffer sized from the window, so no layer is cropped. Theme colors come from `--ascii` / `--ascii-strong`, tuned for warm paper and charcoal. Rendering is capped at 12fps with a 1.5× DPR, stops in hidden tabs, and draws one static frame under reduced motion. The canvas is decorative and never intercepts input.
 
-The root is a static site, compatible with the existing GitHub Pages workflow and Vercel. Local changes do not update production until deployed through your hosting workflow.
+## Boot screen
+
+On the first load of a browser session, a fixed overlay reveals "Sourasis Karak" with a neural-glyph glitch and a progress line, then slides away (~2s). Reduced-motion visitors skip it. It sets a sessionStorage flag so reloads stay immediate.
+
+## Verify
+
+```sh
+npm run typecheck
+npm run build
+```
+
+Lighthouse (local production): accessibility 100, best practices 100, SEO 100.
+
+## Deploy to Vercel
+
+Import the repository with **Next.js** as the framework and repository root as Root Directory. Keep the default output directory and `vercel.json` build command. Set `NEXT_PUBLIC_SITE_URL` to the production origin without a trailing slash. No database or API keys required.

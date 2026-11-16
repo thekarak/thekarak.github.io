@@ -1,8 +1,10 @@
-/* Pointer-led orbital study. Real 3D projection, no dependencies. */
+/* Pointer-led orbital study & tactile spatial micro-interactions. Real 3D projection, zero dependencies. */
 (() => {
   'use strict';
   const motion = matchMedia('(prefers-reduced-motion: reduce)');
   const fine = matchMedia('(pointer: fine)');
+
+  // 1. Subtle portrait tilt with spring release
   const portrait = document.querySelector('[data-tilt]');
   let tiltFrame = 0;
   if (portrait) {
@@ -22,22 +24,28 @@
     });
   }
 
+  // 2. 3D Celestial Orbital Canvas Engine
   const canvas = document.querySelector('#orbit-canvas');
   const context = canvas?.getContext('2d');
   const art = canvas?.closest('.orbit-art');
-  if (!context || !art) return;
-  const caption = art.querySelector('.orbit-caption');
-  const readout = art.querySelector('.orbit-readout');
-  const width = 280, height = 230, radius = 65;
-  const dpr = Math.min(devicePixelRatio || 1, 2);
-  canvas.width = width * dpr;
-  canvas.height = height * dpr;
-  context.scale(dpr, dpr);
-  let ink, line;
+  const readout = document.querySelector('#orbit-readout');
+  if (!context || !canvas) return;
+
+  const width = 280, height = 230, radius = 74;
+  function resizeCanvas() {
+    const scale = Math.max(1, canvas.clientWidth / width) * Math.min(devicePixelRatio || 1, 2);
+    canvas.width = Math.round(width * scale);
+    canvas.height = Math.round(height * scale);
+    context.setTransform(canvas.width / width, 0, 0, canvas.height / height, 0, 0);
+  }
+  resizeCanvas();
+
+  let ink = '#262722', line = '#dcdcd4', strongLine = '#b2b5a7';
   function palette() {
     const styles = getComputedStyle(document.documentElement);
-    ink = styles.getPropertyValue('--text').trim();
-    line = styles.getPropertyValue('--strong-line').trim();
+    ink = styles.getPropertyValue('--ink').trim() || '#262722';
+    line = styles.getPropertyValue('--line').trim() || '#dcdcd4';
+    strongLine = styles.getPropertyValue('--strong-line').trim() || '#b2b5a7';
   }
   palette();
 
@@ -46,94 +54,205 @@
   let targetYaw = 0, targetPitch = -.32;
   let velocity = 0, impulse = 0, satelliteAngle = .6;
   let hovering = false, previousX = null, pointerAt = 0;
-  let pointerX = 0, pointerY = 0, hoverStrength = 0;
+  let pointerX = width / 2, pointerY = height / 2, hoverStrength = 0;
+
   const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
   const degrees = radians => {
     const value = Math.round(radians * 180 / Math.PI);
     return `${value < 0 ? '−' : '+'}${Math.abs(value).toString().padStart(2, '0')}°`;
   };
 
-  // All rings, grid lines, and satellites share the same perspective transform.
+  // 3D perspective projection onto the canvas viewport
   function project(x, y, z) {
     const a = rotation + yaw;
     const px = x * Math.cos(a) - z * Math.sin(a);
     const pz = x * Math.sin(a) + z * Math.cos(a);
     const py = y * Math.cos(pitch) - pz * Math.sin(pitch);
     const depth = y * Math.sin(pitch) + pz * Math.cos(pitch);
-    const scale = 400 / (400 + depth);
-    return [width / 2 + px * scale, height / 2 + py * scale, depth];
+    const scale = 420 / (420 + depth);
+    return [width / 2 + px * scale, height / 2 + py * scale, depth, scale];
   }
+
   function orbitPoint(t, tilt) {
-    return [94 * Math.cos(t), 94 * Math.sin(t) * Math.sin(tilt), 94 * Math.sin(t) * Math.cos(tilt)];
+    const r = 98;
+    return [r * Math.cos(t), r * Math.sin(t) * Math.sin(tilt), r * Math.sin(t) * Math.cos(tilt)];
   }
-  // Stroke the near and far segments separately so the sphere reads as a volume.
+
+  // Draw 3D curved paths partitioned into front and back hemispheres
   function curve(points, front, alpha, stroke = ink, thickness = .65) {
     context.beginPath();
     let drawing = false;
-    points.forEach(point => {
-      const near = point[2] <= 0;
-      if (near !== front) { drawing = false; return; }
-      if (!drawing) context.moveTo(point[0], point[1]);
-      else context.lineTo(point[0], point[1]);
-      drawing = true;
-    });
+    for (let i = 0; i < points.length; i++) {
+      const p = points[i];
+      const near = p[2] <= 0;
+      if (near !== front) { drawing = false; continue; }
+      if (!drawing) { context.moveTo(p[0], p[1]); drawing = true; }
+      else { context.lineTo(p[0], p[1]); }
+    }
     context.strokeStyle = stroke;
-    context.globalAlpha = alpha;
+    context.globalAlpha = Math.max(0, Math.min(1, alpha));
     context.lineWidth = thickness;
     context.stroke();
   }
+
   function draw() {
     context.clearRect(0, 0, width, height);
-    // Tiny registration marks give the object the feel of a working diagram.
-    context.strokeStyle = line;
-    context.lineWidth = .6;
-    context.globalAlpha = .5;
-    [[22,25],[width-22,25],[22,height-25],[width-22,height-25]].forEach(([x,y]) => {
-      context.beginPath(); context.moveTo(x-3,y);context.lineTo(x+3,y);
-      context.moveTo(x,y-3);context.lineTo(x,y+3);context.stroke();
+
+    // Instrument registration corner ticks
+    context.strokeStyle = strongLine;
+    context.lineWidth = .7;
+    context.globalAlpha = .45;
+    const pad = 20, tickLen = 3;
+    [[pad, pad], [width - pad, pad], [pad, height - pad], [width - pad, height - pad]].forEach(([cx, cy]) => {
+      context.beginPath();
+      context.moveTo(cx - tickLen, cy); context.lineTo(cx + tickLen, cy);
+      context.moveTo(cx, cy - tickLen); context.lineTo(cx, cy + tickLen);
+      context.stroke();
     });
+
+    // 1. Meridians (longitudes)
     const paths = [];
-    for (let meridian = 0; meridian < 10; meridian++) {
-      const longitude = meridian / 10 * Math.PI;
-      const points = [];
-      for (let step = 0; step <= 100; step++) {
-        const t = step / 100 * Math.PI * 2;
-        points.push(project(radius * Math.cos(t) * Math.cos(longitude), radius * Math.sin(t), radius * Math.cos(t) * Math.sin(longitude)));
+    const intersections = [];
+    const meridianCount = 10;
+    const parallelCount = 5;
+
+    for (let m = 0; m < meridianCount; m++) {
+      const longitude = (m / meridianCount) * Math.PI;
+      const pts = [];
+      for (let s = 0; s <= 90; s++) {
+        const t = (s / 90) * Math.PI * 2;
+        pts.push(project(
+          radius * Math.cos(t) * Math.cos(longitude),
+          radius * Math.sin(t),
+          radius * Math.cos(t) * Math.sin(longitude)
+        ));
       }
-      paths.push(points);
+      paths.push(pts);
     }
-    for (let parallel = -2; parallel <= 2; parallel++) {
-      const latitude = parallel * Math.PI / 7;
-      const r = radius * Math.cos(latitude);
-      const points = [];
-      for (let step = 0; step <= 100; step++) {
-        const t = step / 100 * Math.PI * 2;
-        points.push(project(r * Math.cos(t), radius * Math.sin(latitude), r * Math.sin(t)));
+
+    // 2. Parallels (latitudes)
+    for (let p = -2; p <= 2; p++) {
+      const lat = (p * Math.PI) / 6.5;
+      const r = radius * Math.cos(lat);
+      const y = radius * Math.sin(lat);
+      const pts = [];
+      for (let s = 0; s <= 90; s++) {
+        const t = (s / 90) * Math.PI * 2;
+        pts.push(project(r * Math.cos(t), y, r * Math.sin(t)));
       }
-      paths.push(points);
+      paths.push(pts);
+
+      // Collect grid intersections for constellation nodes
+      for (let m = 0; m < meridianCount; m++) {
+        const lon = (m / meridianCount) * Math.PI * 2;
+        intersections.push(project(
+          r * Math.sin(lon),
+          y,
+          r * Math.cos(lon)
+        ));
+      }
     }
+
+    // 3. Orbit track & satellite
     const orbit = [];
-    for (let step = 0; step <= 140; step++) orbit.push(project(...orbitPoint(step / 140 * Math.PI * 2, .52)));
-    curve(orbit, false, .18, line, .8);
-    paths.forEach(points => curve(points, false, .14));
-    paths.forEach(points => curve(points, true, .58 + hoverStrength * .14));
-    curve(orbit, true, .65, line, .8);
-    const satellite = project(...orbitPoint(satelliteAngle, .52));
-    context.globalAlpha = satellite[2] > 0 ? .45 : 1;
-    context.fillStyle = ink;
-    context.beginPath();context.arc(satellite[0],satellite[1],2.5,0,Math.PI*2);context.fill();
-    context.globalAlpha *= .22;
-    context.beginPath();context.arc(satellite[0],satellite[1],6,0,Math.PI*2);context.stroke();
-    if (hoverStrength > .01) {
-      context.globalAlpha = hoverStrength * .35;
-      context.setLineDash([2, 4]);
-      context.beginPath(); context.moveTo(width / 2, height / 2);
-      context.lineTo(pointerX, pointerY);context.stroke();context.setLineDash([]);
-      context.globalAlpha = hoverStrength * .7;
-      context.beginPath();context.arc(pointerX,pointerY,3,0,Math.PI*2);context.stroke();
+    const orbitSteps = 120;
+    for (let s = 0; s <= orbitSteps; s++) {
+      orbit.push(project(...orbitPoint((s / orbitSteps) * Math.PI * 2, .52)));
     }
+
+    // Back hemisphere rendering (faint, atmospheric)
+    curve(orbit, false, .16, line, .75);
+    paths.forEach(pts => curve(pts, false, .12, line, .6));
+
+    // Front hemisphere rendering (crisp, illuminated)
+    paths.forEach(pts => curve(pts, true, .58 + hoverStrength * .15, ink, .65));
+    curve(orbit, true, .68, strongLine, .85);
+
+    // 4. Constellation Nodes (Micro coordinate points on front hemisphere)
+    for (let i = 0; i < intersections.length; i++) {
+      const node = intersections[i];
+      if (node[2] <= 0) { // front hemisphere only
+        const depthFactor = clamp((radius - node[2]) / (radius * 2), 0.3, 1);
+        const nodeAlpha = (.3 + depthFactor * .45 + hoverStrength * .25);
+        context.fillStyle = ink;
+        context.globalAlpha = nodeAlpha;
+        context.beginPath();
+        const nodeR = 1.1 * node[3] * (depthFactor > .7 ? 1.2 : 1);
+        context.arc(node[0], node[1], nodeR, 0, Math.PI * 2);
+        context.fill();
+
+        // Subtle specular halo on prominent front nodes when hovered
+        if (hoverStrength > .05 && depthFactor > .82) {
+          context.strokeStyle = ink;
+          context.globalAlpha = hoverStrength * .22 * depthFactor;
+          context.lineWidth = .6;
+          context.beginPath();
+          context.arc(node[0], node[1], nodeR + 2.5, 0, Math.PI * 2);
+          context.stroke();
+        }
+      }
+    }
+
+    // 5. Satellite with kinetic decay trail
+    const satPos = project(...orbitPoint(satelliteAngle, .52));
+    const satFront = satPos[2] <= 0;
+
+    // Fading orbital trail
+    const trailLen = 14;
+    context.lineWidth = .8;
+    for (let i = 1; i <= trailLen; i++) {
+      const trailAngle = satelliteAngle - (i * 0.035);
+      const tp = project(...orbitPoint(trailAngle, .52));
+      if (tp[2] <= 0 || !satFront) {
+        context.globalAlpha = (1 - (i / trailLen)) * (satFront ? .45 : .18);
+        context.fillStyle = ink;
+        context.beginPath();
+        context.arc(tp[0], tp[1], Math.max(.5, 1.8 - (i * .1)), 0, Math.PI * 2);
+        context.fill();
+      }
+    }
+
+    // Satellite body
+    context.globalAlpha = satFront ? 1 : .38;
+    context.fillStyle = ink;
+    context.beginPath();
+    context.arc(satPos[0], satPos[1], 2.8, 0, Math.PI * 2);
+    context.fill();
+
+    // Satellite beacon ring
+    context.strokeStyle = ink;
+    context.globalAlpha = satFront ? (.4 + hoverStrength * .3) : .15;
+    context.lineWidth = .75;
+    context.beginPath();
+    context.arc(satPos[0], satPos[1], 6.5, 0, Math.PI * 2);
+    context.stroke();
+
+    // Pointer magnetic tether when hovering
+    if (hoverStrength > .02) {
+      context.globalAlpha = hoverStrength * .3;
+      context.strokeStyle = strongLine;
+      context.lineWidth = .7;
+      context.setLineDash([2, 4]);
+      context.beginPath();
+      context.moveTo(width / 2, height / 2);
+      context.lineTo(pointerX, pointerY);
+      context.stroke();
+      context.setLineDash([]);
+
+      // Subtle cursor target ring
+      context.globalAlpha = hoverStrength * .6;
+      context.strokeStyle = ink;
+      context.beginPath();
+      context.arc(pointerX, pointerY, 3.5, 0, Math.PI * 2);
+      context.stroke();
+    }
+
     context.globalAlpha = 1;
-    if (readout) readout.textContent = `${degrees(yaw)} / ${degrees(pitch)}`;
+
+    // Numerical HUD readout update
+    if (readout) {
+      readout.textContent = `${degrees(yaw)} / ${degrees(pitch)}`;
+    }
   }
 
   function tick(time) {
@@ -148,24 +267,32 @@
     velocity += impulse;
     impulse = 0;
     velocity *= Math.pow(.95, dt);
-    rotation += (.0012 * (1 - hoverStrength * .8) + velocity) * dt;
-    satelliteAngle += .004 * dt;
-    // A pointer that stops moving should stop adding momentum.
+    rotation += (.0011 * (1 - hoverStrength * .75) + velocity) * dt;
+    satelliteAngle += (.0042 + (hoverStrength * .002)) * dt;
+
     if (time - pointerAt > 90) previousX = null;
-    draw(); frame = requestAnimationFrame(tick);
+    draw();
+    frame = requestAnimationFrame(tick);
   }
+
   function sync() {
-    cancelAnimationFrame(frame); frame = 0; last = 0;
+    cancelAnimationFrame(frame);
+    frame = 0;
+    last = 0;
     if (motion.matches) {
-      yaw = targetYaw = 0; pitch = targetPitch = -.32;
+      yaw = targetYaw = 0;
+      pitch = targetPitch = -.32;
       velocity = impulse = hoverStrength = 0;
-      hovering = false; art.classList.remove('is-engaged');
-      if (caption) caption.textContent = 'a little perspective';
+      hovering = false;
+      art?.classList.remove('is-engaged');
     }
     draw();
-    if (visible && !document.hidden && !motion.matches) frame = requestAnimationFrame(tick);
+    if (visible && !document.hidden && !motion.matches) {
+      frame = requestAnimationFrame(tick);
+    }
   }
-  // Page movement gently steers the object; moving over it gives direct control.
+
+  // Pointer tracking for smooth 3D steering
   document.addEventListener('pointermove', event => {
     if (!visible || motion.matches || !fine.matches || event.pointerType === 'touch') return;
     const box = canvas.getBoundingClientRect();
@@ -177,29 +304,65 @@
     const y = over ? (localY - .5) * 2 : (event.clientY / innerHeight - .5) * 2;
     targetYaw = clamp(x, -1, 1) * (over ? 1.25 : .3);
     targetPitch = -.32 + clamp(y, -1, 1) * (over ? .9 : .22);
-    pointerX = localX * width; pointerY = localY * height;
-    if (over && previousX !== null) impulse += clamp(event.clientX - previousX, -30, 30) * .00018;
+    pointerX = localX * width;
+    pointerY = localY * height;
+
+    if (over && previousX !== null) {
+      impulse += clamp(event.clientX - previousX, -30, 30) * .00018;
+    }
     previousX = over ? event.clientX : null;
     pointerAt = performance.now();
+
     if (hovering !== over) {
-      hovering = over; art.classList.toggle('is-engaged', over);
-      if (caption) caption.textContent = over ? 'a change in perspective' : 'a little perspective';
+      hovering = over;
+      art?.classList.toggle('is-engaged', over);
     }
   }, { passive: true });
+
   document.documentElement.addEventListener('pointerleave', () => {
-    hovering = false; previousX = null; targetYaw = 0; targetPitch = -.32;
-    art.classList.remove('is-engaged');
-    if (caption) caption.textContent = 'a little perspective';
+    hovering = false;
+    previousX = null;
+    targetYaw = 0;
+    targetPitch = -.32;
+    art?.classList.remove('is-engaged');
   });
-  new MutationObserver(() => { palette(); draw(); }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+
+  // Watch for theme changes to adapt canvas line colors instantly
+  new MutationObserver(() => {
+    palette();
+    draw();
+  }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+
   if ('IntersectionObserver' in window) {
-    new IntersectionObserver(entries => { visible = entries[0].isIntersecting; sync(); }).observe(canvas);
+    new IntersectionObserver(entries => {
+      visible = entries[0].isIntersecting;
+      sync();
+    }).observe(canvas);
   }
+
   document.addEventListener('visibilitychange', sync);
   motion.addEventListener('change', sync);
+  new ResizeObserver(() => {
+    resizeCanvas();
+    draw();
+  }).observe(canvas);
   sync();
 
-  // A small directional response on the closing arrow, never on the text.
+  // 3. Apple/Linear-grade radial cursor spotlight on cards
+  const spotlightTargets = document.querySelectorAll('.project, .workflow-panel, .practice-grid article, .availability');
+  if (fine.matches && !motion.matches) {
+    spotlightTargets.forEach(card => {
+      card.addEventListener('pointermove', event => {
+        const rect = card.getBoundingClientRect();
+        const x = event.clientX - rect.left;
+        const y = event.clientY - rect.top;
+        card.style.setProperty('--mouse-x', `${x}px`);
+        card.style.setProperty('--mouse-y', `${y}px`);
+      }, { passive: true });
+    });
+  }
+
+  // 4. Directional contact arrow response
   const contact = document.querySelector('.contact');
   contact?.addEventListener('pointermove', event => {
     if (motion.matches || !fine.matches) return;
@@ -208,12 +371,23 @@
     contact.style.setProperty('--arrow-y', `${((event.clientY - box.top) / box.height - .5) * 14}px`);
   }, { passive: true });
   contact?.addEventListener('pointerleave', () => {
-    contact.style.setProperty('--arrow-x', '0px');contact.style.setProperty('--arrow-y', '0px');
+    contact.style.setProperty('--arrow-x', '0px');
+    contact.style.setProperty('--arrow-y', '0px');
   });
+
+  // 5. Section reveal observer
   if ('IntersectionObserver' in window && !motion.matches) {
     const observer = new IntersectionObserver(entries => {
-      entries.forEach(entry => { if (entry.isIntersecting) { entry.target.classList.add('is-visible'); observer.unobserve(entry.target); } });
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('is-visible');
+          observer.unobserve(entry.target);
+        }
+      });
     }, { threshold: .08 });
-    document.querySelectorAll('.section-head, .tool-list, .note-list').forEach(element => { element.classList.add('reveal-pending'); observer.observe(element); });
+    document.querySelectorAll('.section-head, .tool-list, .note-list').forEach(el => {
+      el.classList.add('reveal-pending');
+      observer.observe(el);
+    });
   }
 })();

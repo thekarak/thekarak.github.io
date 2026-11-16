@@ -1,3 +1,13 @@
 files.zip
 .DS_Store
 Thumbs.db
+*.log
+node_modules/
+.next/
+.next-debug/
+out/
+.vercel/
+.env*
+*.tsbuildinfo
+next-env.d.ts
+test-results/

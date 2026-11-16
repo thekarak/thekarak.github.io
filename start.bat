@@ -1,5 +1,5 @@
 @echo off
-echo Starting personal website server at http://localhost:8000 ...
-start http://localhost:8000
-python -m http.server 8000
+echo Starting personal website server at http://127.0.0.1:8000 ...
+start http://127.0.0.1:8000
+node "%~dp0serve.cjs"
 pause

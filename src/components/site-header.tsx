@@ -25,12 +25,12 @@ export function SiteHeader() {
 
   return (
     <header id="top" className="site-header">
-      <a className="brand" href="#top">
+      <Link className="brand" href="/#top">
         {site.name}
-      </a>
+      </Link>
       <nav className="nav" aria-label="Sections">
-        <a href="#about">about</a>
-        <a href="#work">work</a>
+        <Link href="/#about">about</Link>
+        <Link href="/#work">work</Link>
         <Link href="/blog">blog</Link>
       </nav>
       <div className="header-actions">
